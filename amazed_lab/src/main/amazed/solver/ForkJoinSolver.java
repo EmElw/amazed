@@ -22,6 +22,7 @@ public class ForkJoinSolver
 
     private static final long SLEEP_CONSTANT = 20;
     private List<ForkJoinSolver> children;
+    private boolean root = false;
 
     private ForkJoinSolver(Maze maze) {
         super( maze );
@@ -43,6 +44,7 @@ public class ForkJoinSolver
         if ( frontier.isEmpty() )     // only empty if it's the root solver
         {
             frontier.push( maze.start() );
+            root = true;
         }
         List<Integer> result = parallelSearch();
         killChildren();
@@ -60,45 +62,92 @@ public class ForkJoinSolver
         // invariants: everything in frontier is mapped in predecessors
         while (!frontier.isEmpty()) {
             if ( frontier.size() > 1 ) {
-                while (frontier.size() > 0) {
+                while (frontier.size() > 1) {
                     spawnChild( frontier.pop() );
                 }
-                List<Integer> result = joinChildren( start );
-                if ( result != null ) {
-                    return result;
-                }
-            } else {
-                int currentNode = frontier.pop();
+            }
 
-                if ( visited.add( currentNode ) ) { // returns false if the node is already in the set
-                    maze.move( player, currentNode );
-                    evaluateNode( currentNode );
-                    if ( maze.hasGoal( currentNode ) ) {
-                        List<Integer> result = pathFromTo( start, currentNode );
-                        return result;
-                    }
+            int currentNode = frontier.pop();
+            if ( root )
+                System.out.println( "root moved > " + currentNode );
+
+            if ( visited.add( currentNode ) ) { // returns false if the node is already in the set
+                maze.move( player, currentNode );
+                evaluateNode( currentNode );
+                if ( maze.hasGoal( currentNode ) ) {
+                    return pathFromTo( start, currentNode );
+                }
+            }
+
+            List<Integer> childResult = testChildren( start );
+            if ( childResult != null ) {
+                return childResult;
+            }
+        }
+
+        return joinChildren( start );
+    }
+
+    /**
+     * Returns the first non-null result of a isDone() child, or null if there is none
+     * <p>
+     * Additionally removes all children that isDone().
+     *
+     * @param node this instance's local start
+     * @return a path or null
+     */
+    private List<Integer> testChildren(int node) {
+        List<ForkJoinSolver> toRemove = new ArrayList<>();
+        for (ForkJoinSolver child : children) {
+            if ( child.isDone() ) {
+                toRemove.add( child );
+                List<Integer> childResult = child.join();
+                if ( childResult != null ) {
+                    return aggregateResult( node, childResult );
                 }
             }
         }
+        children.removeAll( toRemove );
         return null;
-
     }
 
+    /**
+     * Attempts to kill all child processes if they are redundant,
+     * however some details seem to imply that this can only happen
+     * if the task hasn't already been started
+     */
     private void killChildren() {
         for (ForkJoinSolver child : children) {
             child.cancel( true );
         }
     }
 
+    /**
+     * Concatenates this (the parent's) path with the child's
+     *
+     * @param node        this instance local start
+     * @param childResult the child's path (return value)
+     * @return a path
+     */
+    private List<Integer> aggregateResult(int node, List<Integer> childResult) {
+        List<Integer> result = pathFromTo( node, childResult.get( 0 ) );
+        assert result != null;
+        result.remove( result.size() - 1 ); // remove last to remove "overlap"
+        result.addAll( childResult );
+        return result;
+    }
+
+    /**
+     * joins() all children and returns the first non-null result, or null if there is none
+     *
+     * @param node the local starting node of this instance (the parent)
+     * @return a list of nodes representing a path, or null if there is no path
+     */
     private List<Integer> joinChildren(int node) {
         for (ForkJoinSolver child : children) {
             List<Integer> childResult = child.join();
             if ( childResult != null ) {
-                List<Integer> result = pathFromTo( node, childResult.get( 0 ) );
-                assert result != null;
-                result.remove( result.size() - 1 ); // remove last to remove "overlap"
-                result.addAll( childResult );
-                return result;
+                return aggregateResult( node, childResult );
             }
         }
         return null;
