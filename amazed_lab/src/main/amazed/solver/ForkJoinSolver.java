@@ -44,7 +44,9 @@ public class ForkJoinSolver
         {
             frontier.push( maze.start() );
         }
-        return parallelSearch();
+        List<Integer> result = parallelSearch();
+        killChildren();
+        return result;
     }
 
     /**
@@ -73,7 +75,6 @@ public class ForkJoinSolver
                     evaluateNode( currentNode );
                     if ( maze.hasGoal( currentNode ) ) {
                         List<Integer> result = pathFromTo( start, currentNode );
-                        assert result != null;
                         return result;
                     }
                 }
@@ -81,6 +82,12 @@ public class ForkJoinSolver
         }
         return null;
 
+    }
+
+    private void killChildren() {
+        for (ForkJoinSolver child : children) {
+            child.cancel( true );
+        }
     }
 
     private List<Integer> joinChildren(int node) {
