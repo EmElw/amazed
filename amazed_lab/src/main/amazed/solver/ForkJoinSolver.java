@@ -68,8 +68,6 @@ public class ForkJoinSolver
             }
 
             int currentNode = frontier.pop();
-            if ( root )
-                System.out.println( "root moved > " + currentNode );
 
             if ( visited.add( currentNode ) ) { // returns false if the node is already in the set
                 maze.move( player, currentNode );
