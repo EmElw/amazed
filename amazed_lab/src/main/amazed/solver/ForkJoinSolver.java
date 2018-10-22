@@ -57,7 +57,7 @@ public class ForkJoinSolver
      * @return a list of node id:s from (local) start to goal
      */
     private List<Integer> parallelSearch() {
-
+        int forkCount = 0;
         int start = frontier.peek();
         int player = maze.newPlayer( start );
 
@@ -68,13 +68,20 @@ public class ForkJoinSolver
                 break;    // early termination when someone finds a solution
             }
 
-            // spawn as soon as there are multiple options
-            if ( frontier.size() > 1 ) {
-                while (frontier.size() > 1) {
+//            // spawn as soon as there are multiple options
+//            if ( frontier.size() > 1 ) {
+//                while (frontier.size() > 1) {
+//                    spawnChild( frontier.pop() );
+//                }
+//            }
+            if ( forkCount >= forkAfter ) {
+                if ( frontier.size() > 1 ) {
                     spawnChild( frontier.pop() );
+                    forkCount = 0;
                 }
+            } else {
+                forkCount++;
             }
-
             int currentNode = frontier.pop();
 
             if ( visited.add( currentNode ) ) { // returns false if the node is already in the set
