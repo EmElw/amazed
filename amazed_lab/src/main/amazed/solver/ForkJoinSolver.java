@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * <code>ForkJoinSolver</code> implements a solver for
@@ -23,20 +24,22 @@ public class ForkJoinSolver
     private static final long SLEEP_CONSTANT = 20;
     private List<ForkJoinSolver> children;
     private boolean root = false;
+    private AtomicBoolean done;
 
     private ForkJoinSolver(Maze maze) {
         super( maze );
     }
 
-    private ForkJoinSolver(Maze maze, int forkAfter, Set<Integer> visited) {
+    private ForkJoinSolver(Maze maze, int forkAfter, Set<Integer> visited, AtomicBoolean done) {
         this( maze );
         this.forkAfter = forkAfter;
         this.visited = visited;     // overwrites the default set init:ed in SequentialSolver
         this.children = new ArrayList<>();
+        this.done = done;
     }
 
     public ForkJoinSolver(Maze maze, int forkAfter) {
-        this( maze, forkAfter, new ConcurrentSkipListSet<>() );
+        this( maze, forkAfter, new ConcurrentSkipListSet<>(), new AtomicBoolean( false ) );
     }
 
     @Override
@@ -47,7 +50,6 @@ public class ForkJoinSolver
             root = true;
         }
         List<Integer> result = parallelSearch();
-        killChildren();
         return result;
     }
 
@@ -61,6 +63,10 @@ public class ForkJoinSolver
 
         // invariants: everything in frontier is mapped in predecessors
         while (!frontier.isEmpty()) {
+            if ( done.get() ) {
+                System.out.println("Early termination");
+                break;    // early termination when someone finds a solution
+            }
             if ( frontier.size() > 1 ) {
                 while (frontier.size() > 1) {
                     spawnChild( frontier.pop() );
@@ -79,7 +85,8 @@ public class ForkJoinSolver
 
             List<Integer> childResult = testChildren( start );
             if ( childResult != null ) {
-                return childResult;
+                done.set( true );
+                return aggregateResult( start, childResult );
             }
         }
 
@@ -101,6 +108,7 @@ public class ForkJoinSolver
                 toRemove.add( child );
                 List<Integer> childResult = child.join();
                 if ( childResult != null ) {
+                    done.set( true );
                     return aggregateResult( node, childResult );
                 }
             }
@@ -110,25 +118,14 @@ public class ForkJoinSolver
     }
 
     /**
-     * Attempts to kill all child processes if they are redundant,
-     * however some details seem to imply that this can only happen
-     * if the task hasn't already been started
-     */
-    private void killChildren() {
-        for (ForkJoinSolver child : children) {
-            child.cancel( true );
-        }
-    }
-
-    /**
      * Concatenates this (the parent's) path with the child's
      *
-     * @param node        this instance local start
+     * @param localstart  this instance local start
      * @param childResult the child's path (return value)
      * @return a path
      */
-    private List<Integer> aggregateResult(int node, List<Integer> childResult) {
-        List<Integer> result = pathFromTo( node, childResult.get( 0 ) );
+    private List<Integer> aggregateResult(int localstart, List<Integer> childResult) {
+        List<Integer> result = pathFromTo( localstart, childResult.get( 0 ) );
         assert result != null;
         result.remove( result.size() - 1 ); // remove last to remove "overlap"
         result.addAll( childResult );
@@ -152,7 +149,7 @@ public class ForkJoinSolver
     }
 
     private void spawnChild(int node) {
-        ForkJoinSolver child = new ForkJoinSolver( maze, forkAfter, visited );
+        ForkJoinSolver child = new ForkJoinSolver( maze, forkAfter, visited, done );
         child.frontier.push( node );
         children.add( child );
         child.fork();

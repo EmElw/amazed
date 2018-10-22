@@ -21,22 +21,22 @@ compile: $(SOURCE_FILES)
 	$(JAVAC) $^
 
 sequential_small: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map sequential
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map sequential -1
 
 sequential_medium: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map sequential
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map sequential -1
 
 parallel_small_step3: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map parallel-3
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map parallel-3 -1
 
 parallel_small_step9: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map parallel-9
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/small.map parallel-9 -1
 
 parallel_medium_step3: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map parallel-3
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map parallel-3 -1
 
 parallel_medium_step9: compile
-	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map parallel-9
+	$(JAVA) -cp $(MAIN_CP) $(MAIN_CLASS) $(MAPS_DIR)/medium.map parallel-9 -1
 
 .PHONY: compile
 
