@@ -21,6 +21,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class ForkJoinSolver
         extends SequentialSolver {
 
+    static int itCount = 0;
+
     private static final long SLEEP_CONSTANT = 20;
     private List<ForkJoinSolver> children;
     private boolean root = false;
@@ -64,9 +66,10 @@ public class ForkJoinSolver
         // invariants: everything in frontier is mapped in predecessors
         while (!frontier.isEmpty()) {
             if ( done.get() ) {
-                System.out.println( "Early termination" );
                 break;    // early termination when someone finds a solution
             }
+
+            itCount++;
 
 //            // spawn as soon as there are multiple options
 //            if ( frontier.size() > 1 ) {
@@ -88,6 +91,7 @@ public class ForkJoinSolver
                 maze.move( player, currentNode );
                 evaluateNode( currentNode );
                 if ( maze.hasGoal( currentNode ) ) {
+                    done.set( true );
                     return pathFromTo( start, currentNode );
                 }
             }
