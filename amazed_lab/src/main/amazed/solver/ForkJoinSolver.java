@@ -64,9 +64,11 @@ public class ForkJoinSolver
         // invariants: everything in frontier is mapped in predecessors
         while (!frontier.isEmpty()) {
             if ( done.get() ) {
-                System.out.println("Early termination");
+                System.out.println( "Early termination" );
                 break;    // early termination when someone finds a solution
             }
+
+            // spawn as soon as there are multiple options
             if ( frontier.size() > 1 ) {
                 while (frontier.size() > 1) {
                     spawnChild( frontier.pop() );
@@ -83,39 +85,11 @@ public class ForkJoinSolver
                 }
             }
 
-            List<Integer> childResult = testChildren( start );
-            if ( childResult != null ) {
-                done.set( true );
-                return aggregateResult( start, childResult );
-            }
         }
 
         return joinChildren( start );
     }
 
-    /**
-     * Returns the first non-null result of a isDone() child, or null if there is none
-     * <p>
-     * Additionally removes all children that isDone().
-     *
-     * @param node this instance's local start
-     * @return a path or null
-     */
-    private List<Integer> testChildren(int node) {
-        List<ForkJoinSolver> toRemove = new ArrayList<>();
-        for (ForkJoinSolver child : children) {
-            if ( child.isDone() ) {
-                toRemove.add( child );
-                List<Integer> childResult = child.join();
-                if ( childResult != null ) {
-                    done.set( true );
-                    return aggregateResult( node, childResult );
-                }
-            }
-        }
-        children.removeAll( toRemove );
-        return null;
-    }
 
     /**
      * Concatenates this (the parent's) path with the child's
